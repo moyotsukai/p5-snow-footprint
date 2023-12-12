@@ -581,25 +581,30 @@ var _p5Default = parcelHelpers.interopDefault(_p5);
 var _footprint = require("./Footprint");
 var _footprintDefault = parcelHelpers.interopDefault(_footprint);
 var _utils = require("./utils");
+var _shader = require("./shader");
 let footprints = [];
 const INTERVAL = 120;
 let footprintType = "rabbit";
+let shader = null;
 const sketch = (p)=>{
     p.setup = ()=>{
-        p.createCanvas(p.windowWidth, p.windowHeight);
+        p.createCanvas(p.windowWidth, p.windowHeight, p.WEBGL);
+        shader = p.createShader((0, _shader.vs), (0, _shader.fs));
         p.background(240, 246, 255);
     };
     p.draw = ()=>{
-        p.background(240, 246, 255, 0.01 * 255);
         drawFootprint();
+        p.noStroke();
+        p.fill(240, 246, 255);
     };
     p.mouseClicked = ()=>{
         footprintType = footprintType === "rabbit" ? "bear" : "rabbit";
     };
     const drawFootprint = ()=>{
+        if (!shader) return;
         const currentPosition = {
-            x: p.mouseX,
-            y: p.mouseY
+            x: p.mouseX - p.width / 2,
+            y: p.mouseY - p.height / 2
         };
         const previousPosition = footprints.length ? footprints.slice(-1)[0].position : {
             x: 0,
@@ -609,13 +614,19 @@ const sketch = (p)=>{
         const angle = -(0, _utils.angleBwtween)(currentPosition, previousPosition) - 90;
         const footprint = new (0, _footprintDefault.default)(currentPosition, angle, footprints.length, p);
         footprint.footprintType = footprintType;
+        shader.setUniform("u_resolution", [
+            p.width * p.displayDensity(),
+            p.height * p.displayDensity()
+        ]);
+        p.shader(shader);
         footprint.draw();
         footprints.push(footprint);
+        p.resetShader();
     };
 };
 new (0, _p5Default.default)(sketch);
 
-},{"p5":"7Uk5U","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","./Footprint":"7ZyRo","./utils":"dsXzW"}],"7Uk5U":[function(require,module,exports) {
+},{"p5":"7Uk5U","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","./Footprint":"7ZyRo","./utils":"dsXzW","./shader":"1ZZv6"}],"7Uk5U":[function(require,module,exports) {
 /*! p5.js v1.4.1 February 02, 2022 */ var global = arguments[3];
 !function(e) {
     module.exports = e();
@@ -28097,6 +28108,57 @@ const angleBwtween = (a, b)=>{
     if (b.x - a.x < 0) return theta / Math.PI * 180 + 180;
     return theta / Math.PI * 180;
 };
+
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"1ZZv6":[function(require,module,exports) {
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+parcelHelpers.export(exports, "vs", ()=>vs);
+parcelHelpers.export(exports, "fs", ()=>fs);
+const vs = `
+  precision highp float;
+
+  attribute vec3 aPosition;
+  attribute vec2 aTexCoord;
+  varying vec2 vTexCoord;
+
+  uniform mat4 uProjectionMatrix;
+  uniform mat4 uModelViewMatrix;
+
+  float rand(vec2 co){
+    return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
+  }
+
+  void main() {
+    vec3 pos = aPosition;
+    float rnd = rand(aTexCoord)/8.0;
+    pos.x += rnd;
+    pos.y += rnd / 2.0;
+    vec4 positionVec4 = vec4(pos, 1.0);
+
+    vTexCoord = aTexCoord;
+
+    gl_Position = uProjectionMatrix * uModelViewMatrix * positionVec4;
+  }
+`;
+const fs = `
+  precision highp float;
+  varying vec2 vTexCoord;
+  uniform vec2 u_resolution;
+
+  float random (vec2 st) {
+    return fract(sin(dot(st.xy, vec2(12.9898,78.233)))* 43758.5453123);
+  }
+
+  void main() {
+    vec2 st = gl_FragCoord.xy/u_resolution.xy;
+    float rnd = random(floor(st*1000.0));
+
+    float r = min(210.0/255.0 - rnd / 5.0, 1.0);
+    float g = min(220.0/255.0 - rnd / 10.0, 1.0);
+    float b = min(255.0/255.0 - rnd / 20.0, 1.0);
+    gl_FragColor = vec4(vec3(r, g, b), 1.0);
+  }
+`;
 
 },{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}]},["d8lhj","jeorp"], "jeorp", "parcelRequire94c2")
 
